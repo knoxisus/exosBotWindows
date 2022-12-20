@@ -12,8 +12,8 @@ pytesseract.pytesseract.tesseract_cmd = r"""C:\Program Files (x86)\Tesseract-OCR
 from time import sleep
 from random import randint
 
-from coordinates import *
-from runas.runas import *
+from Runas import *
+from Coordinates import *
 
 def set_position(runas):
     positions = RUNA_POSITIONS
@@ -116,7 +116,6 @@ def stat_from_window(runa):
     
     minWindow = window[yloc:yloc + h, x_init:xloc]
     img = resize(minWindow, 6)
-    #img_debug(img)
     number = pytesseract.image_to_string(img, lang='eng', config='--oem 3 --psm 6')
 
     try:
@@ -135,7 +134,7 @@ def get_intentos(runas, runaTarget):
             intentos = randint(3, 6)
     else:
         intentos = 0
-    print(" ", runaTarget.NAME+":", statFromCsv, statFromWindow, "   -->", intentos, "intentos")
+    print(" ", runaTarget.NAME+":", statFromCsv, statFromWindow, " -->", intentos, "intentos")
     return intentos
 
 def forge_runa_low(runas, runa):
@@ -161,21 +160,23 @@ def forge_obj(stats, runas):
             runa = runa + 1
 
 def maguear_blite():
-    runas = [RUNA_DANIO(), RUNA_CRITICO(), RUNA_SABIDURIA(), RUNA_ALA_RESISTENCIA_TIERRA()]
+    runas = [RUNA_DANIO(), RUNA_CRITICO(), RUNA_SABIDURIA(), RUNA_ALA_RESISTENCIA_TIERRA(),
+             RUNA_RESIS_TIERRA(), RUNA_INICIATIVA(), RUNA_PP(), RUNA_VITALIDAD(),
+             RUNA_INTELIGENCIA(), RUNA_SUERTE()]
     set_position(runas)
-    statsTarget = load_stats_from_csv("stats/stats_blite.csv")
-    forge_obj(statsTarget, runas)
+    statsTarget = load_stats_from_csv("stats/blite.csv")
+    
+    round = runas[:4]
+    forge_obj(statsTarget, round)
 
-    runas = [RUNA_DANIO(), RUNA_CRITICO(), RUNA_SABIDURIA(), RUNA_RESIS_TIERRA()]
-    set_position(runas)
-    statsTarget = load_stats_from_csv("stats/stats_blite.csv")
-    forge_obj(statsTarget, runas)
+    round = runas[:3] + runas[4:5]
+    forge_obj(statsTarget, round)
 
-    runas = [RUNA_DANIO(), RUNA_CRITICO(), RUNA_SABIDURIA(), RUNA_INICIATIVA(), RUNA_PP(), 
-                RUNA_VITALIDAD(), RUNA_INTELIGENCIA(), RUNA_SUERTE()]
-    set_position(runas)
-    statsTarget = load_stats_from_csv("stats/stats_blite.csv")
-    forge_obj(statsTarget, runas)
+    round = runas[:3] + runas[5:]
+    forge_obj(statsTarget, round)
 
-maguear_blite()
-#capture_screen()
+def main():
+    maguear_blite()
+
+if __name__ == "__main__":
+    main()
