@@ -1,4 +1,5 @@
-pip install pyscreenshot
-pip install PIL-Tools
-pip install PyAutoGUI
-pip install opencv-python
+pyscreenshot
+PIL-Tools
+PyAutoGUI
+opencv-python
+pytesseract
