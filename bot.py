@@ -23,7 +23,7 @@ def set_position(runas):
         i = i + 1
 
 def cleaner():
-    os.system("rm *.png")
+    os.remove("stat_windows_img.png")
 
 def capture_screen(window_size=WINDOW_SIZE):
     img = ImageGrab.grab(bbox=window_size)
@@ -88,7 +88,7 @@ def stat_from_window(runa):
     if "ALA RESISTENCIA" in runa.NAME or "RESIS" in runa.NAME:
         probabilidad = 0.9
     else:
-        probabilidad = 0.70
+        probabilidad = 0.77
     
     window = capture_screen()
     needle = cv.imread(runa.STAT_IMG, 0)
@@ -176,7 +176,8 @@ def maguear_blite():
     forge_obj(statsTarget, round)
 
 def main():
-    maguear_blite()
+    #maguear_blite()
+    cleaner()
 
 if __name__ == "__main__":
     main()
