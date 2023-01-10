@@ -15,6 +15,8 @@ from random import randint
 from Runas import *
 from Coordinates import *
 
+SLEEP_TIME = 1.1
+
 def set_position(runas):
     positions = RUNA_POSITIONS
     i = 0
@@ -40,20 +42,27 @@ def capture_screen(window_size=WINDOW_SIZE):
     return cv.imread("stat_windows_img.png", 0)
 
 def nav_position(position):
-    #pt.moveTo(position[0], position[1], duration = 0.1)
-    sleep(0.3)
+    pt.moveTo(position[0], position[1], duration = 0.1)
+    sleep(SLEEP_TIME)
 
 def single_click():
-    #pt.click()
-    sleep(0.3)
+    pt.click()
+    sleep(SLEEP_TIME)
 
 def double_click():
-    #pt.doubleClick()
-    sleep(0.3)
+    pt.doubleClick()
+    sleep(SLEEP_TIME)
 
 def nav_forge_button_position():
-    position = (FORGE_BUTTON_POSITION[0] + randint(-9,9), FORGE_BUTTON_POSITION[1] + randint(-6,6))
+    position = (FORGE_BUTTON_POSITION[0] + randint(-12,12), FORGE_BUTTON_POSITION[1] + randint(-6,6))
     nav_position(position=position)
+
+def f_exit():
+    nav_position(EXIT_POSITION)
+    print("Quiere salir?")
+    sleep(1)
+    single_click()
+    sleep(1)
 
 def forge_runa():
     print("         click")
@@ -65,7 +74,7 @@ def discard_runa():
     double_click()
 
 def select_runa(runa_position):
-    position = (runa_position[0] + randint(-3,3), runa_position[1] + randint(-3,3))
+    position = (runa_position[0] + randint(-9,9), runa_position[1] + randint(-9,9))
     nav_position(position=position)
     double_click()
 
@@ -92,7 +101,7 @@ def stat_from_window(runa):
     max_val = round(max_val, 3)
     
     if max_val < probabilidad:
-        return 1, max_val
+        return 0, max_val
 
     w = needle.shape[1]
     h = needle.shape[0]
@@ -142,22 +151,38 @@ def forge_runa_low(runa):
     else:
         return False
 
-def forge_obj(runas):
+def check_adjust(runas, maxLossStat):
+    count = 0
+    for runa in runas:
+        stat, _ = stat_from_window(runa)
+        if stat == 0:
+            count = count + 1
+    
+    if count >= maxLossStat:
+        return True
+    else:
+        return False
+
+def forge_obj(inventory, runas, maxLossStat):
     runa = 0
     while runa < len(runas):
         if forge_runa_low(runas[runa]):
+            f_exit()
+            if check_adjust(inventory, maxLossStat):
+                adjust_obj(inventory)
             runa = 0
         else:
             runa = runa + 1
 
 def adjust_obj(runas):
+    print("Adjusting....")
     for runa in runas:
         statFromWindow, probabilidad = stat_from_window(runa)
         intentos = int(math.ceil((runa.STAT_TARGET-statFromWindow)/runa.CANT))
-        if intentos > 6:
-            intentos = randint(3,6)
         if statFromWindow > round(runa.STAT_TARGET*(2/3)):
             intentos = 0
+        else:
+            intentos = int(math.ceil((round(runa.STAT_TARGET*(2/3))-statFromWindow)/runa.CANT))
         print(" ", runa.NAME+":", runa.STAT_TARGET, statFromWindow, probabilidad, " -->", intentos, "intentos")
         if intentos > 0:
             discard_runa()
@@ -167,24 +192,26 @@ def adjust_obj(runas):
             while intento < intentos:
                 forge_runa()
                 intento = intento + 1
-        sleep(5)
 
 def maguear_blite():
+    maxLossStat = 2
     runas = [RUNA_DANIO(), RUNA_CRITICO(), RUNA_SABIDURIA(), RUNA_ALA_RESISTENCIA_TIERRA(),
              RUNA_RESIS_TIERRA(), RUNA_INICIATIVA(), RUNA_PP(), RUNA_VITALIDAD(),
              RUNA_INTELIGENCIA(), RUNA_SUERTE()]
+    check_adjust(runas, maxLossStat)
     set_position(runas)
     set_stat_target("stats/blite.csv", runas)
     adjust_obj(runas)
+    os.system('cls')
     
     round = runas[:4]
-    forge_obj(round)
+    forge_obj(runas, round, maxLossStat)
 
     round = runas[:3] + runas[4:5]
-    forge_obj(round)
+    forge_obj(runas, round, maxLossStat)
 
     round = runas[:3] + runas[5:]
-    forge_obj(round)
+    forge_obj(runas, round, maxLossStat)
 
 def main():
     maguear_blite()
