@@ -69,7 +69,7 @@ def f_exit():
     nav_position(EXIT_POSITION)
     single_click()
     print("Quiere salir?")
-    sleep(2)
+    sleep(SLEEP_TIME * 2)
 
 
 def forge_runa():
@@ -192,6 +192,7 @@ def forge_obj(inventory, runas, maxLossStat):
 
 def adjust_obj(runas):
     print("Adjusting....")
+
     for runa in runas:
         statFromWindow, probabilidad = stat_from_window(runa)
         intentos = int(math.ceil((runa.STAT_TARGET-statFromWindow)/runa.CANT))
