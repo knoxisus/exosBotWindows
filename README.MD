@@ -21,6 +21,6 @@ This script makes use of tools developped by the following people
 - [Knutria Dane - Knoxiso](https://github.com/knoxisus)
 
 ## TO DO
-- clicker implementation
+- Other objects.
 
 **Warning:** This code was originally created for personal use, please use with caution.
