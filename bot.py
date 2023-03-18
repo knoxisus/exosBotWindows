@@ -1,5 +1,6 @@
 from Coordinates import *
 from Runas import *
+from ascii import *
 from random import randint
 from time import sleep
 import os
@@ -35,8 +36,14 @@ def set_stat_target(statsFileName, runas):
 
 
 def cleaner():
-    os.remove("stat_windows_img.png")
+    try:
+        os.remove("stat_windows_img.png")
+    except:
+        pass
 
+    os.system('cls')
+
+    print(YODA_ART)
 
 def capture_screen(window_size=WINDOW_SIZE):
     img = ImageGrab.grab(bbox=window_size)
@@ -123,22 +130,35 @@ def stat_from_window(runa):
     xloc, yloc = max_loc[0], max_loc[1]
 
     if runa.SIGNO:
-        x_init = 17
-    elif "AUMENTO DANIO" in runa.NAME:
-        x_init = w - 19
-        xloc = x_init + 25
+        x_init = 15
     else:
         x_init = 0
+    
+    if "AUMENTO_DANIO" in runa.NAME:
+        x_init = w
+        xloc = x_init + 30
+
 
     minWindow = window[yloc:yloc + h, x_init:xloc]
-    img = resize(minWindow, 6)
-    number = pytesseract.image_to_string(
-        img, lang='eng', config='--oem 3 --psm 6')
+    img = resize(minWindow, 9)
+    # img_debug(img)
+    # number = pytesseract.image_to_string(
+    #     img, lang='eng', config='--oem 3 --psm 6')
+    number = pytesseract.image_to_string(img, lang='eng',
+           config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
 
     try:
         number = int(number)
     except:
         number = 0
+
+    if number == 0:
+        print("llamada recursiva " + runa.NAME, number)
+        discard_runa()
+        select_runa(runa.POSITION)
+        nav_forge_button_position()
+        forge_runa()
+        stat_from_window(runa)
 
     return number, max_val
 
@@ -147,7 +167,7 @@ def forge_runa_low(runa):
     statFromWindow, probabilidad = stat_from_window(runa)
     intentos = int(math.ceil((runa.STAT_TARGET-statFromWindow)/runa.CANT))
 
-    if intentos < 0:
+    if intentos <= 0:
         return False
     elif intentos > 6:
         intentos = randint(4, 6)
@@ -196,11 +216,11 @@ def adjust_obj(runas):
     for runa in runas:
         statFromWindow, probabilidad = stat_from_window(runa)
         intentos = int(math.ceil((runa.STAT_TARGET-statFromWindow)/runa.CANT))
-        if statFromWindow > round(runa.STAT_TARGET*(2/3)):
+        if statFromWindow > round(runa.STAT_TARGET*(3/4)):
             intentos = 0
         else:
             intentos = int(
-                math.ceil((round(runa.STAT_TARGET*(2/3))-statFromWindow)/runa.CANT))
+                math.ceil((round(runa.STAT_TARGET*(3/4))-statFromWindow)/runa.CANT))
         print(" ", runa.NAME+":", runa.STAT_TARGET, statFromWindow,
               probabilidad, " -->", intentos, "intentos")
         if intentos > 0:
@@ -213,6 +233,16 @@ def adjust_obj(runas):
                 intento = intento + 1
 
 
+def print_stats(runas):
+    for runa in runas:
+        statFromWindow, probabilidad = stat_from_window(runa)
+        intentos = int(math.ceil((runa.STAT_TARGET-statFromWindow)/runa.CANT))
+        if intentos <= 0:
+            intentos = 0
+        print(" ", runa.NAME+":", runa.STAT_TARGET, statFromWindow,
+              probabilidad, " -->", intentos, "intentos")
+
+
 def maguear_blite():
     maxLossStat = 2
     runas = [RUNA_DANIO(), RUNA_CRITICO(), RUNA_SABIDURIA(), RUNA_ALA_RESISTENCIA_TIERRA(),
@@ -221,6 +251,7 @@ def maguear_blite():
 
     set_position(runas)
     set_stat_target("stats/blite.csv", runas)
+    # print_stats(runas)
     adjust_obj(runas)
     os.system('cls')
 
@@ -235,7 +266,22 @@ def maguear_blite():
 
 
 def maguear_anilamar():
-    print("Not done yet! F")
+    maxLossStat = 1
+    runas = [RUNA_DANIO(), RUNA_SABIDURIA(), RUNA_ALA_RESISTENCIA_FUEGO(), RUNA_ALA_RESISTENCIA_AGUA(),
+             RUNA_PP(), RUNA_VITALIDAD(), RUNA_INICIATIVA(), RUNA_FUERZA(),
+             RUNA_SUERTE(), RUNA_AUMENTO_DANIO()]
+
+    set_position(runas)
+    set_stat_target("stats/anila.csv", runas)
+    # print_stats(runas)
+    adjust_obj(runas)
+    os.system('cls')
+
+    round = runas[:5]
+    forge_obj(runas, round, maxLossStat)
+
+    round = runas[:4] + runas[5:]
+    forge_obj(runas, round, maxLossStat)
 
 
 def maguear_plastao():
@@ -246,7 +292,7 @@ def maguear_tot():
     print("Not done yet! F")
 
 
-def maguear_xxx():
+def maguear_patico():
     print("Not done yet! F")
 
 
@@ -255,11 +301,11 @@ def menu():
 
     opcion = 0
     while opcion not in [1, 2, 3, 4, 5]:
-        print("1. Anillo Bliterado")
-        print("2. Anillo Anilamar")
-        print("3. Botas Platao")
-        print("4. Capa Tot")
-        print("5. Cinturon XXX")
+        print(" 1. Anillo Bliterado")
+        print(" 2. Anillo Anilamar")
+        #print("3. Botas Platao")
+        #print("4. Capa Tot")
+        #print("5. Cinturon patico")
 
         try:
             opcion = int(input("Selecciona una opción: "))
@@ -287,6 +333,7 @@ def menu():
         maguear_xxx()
 
     cleaner()
+
 
 
 if __name__ == "__main__":
