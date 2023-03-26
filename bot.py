@@ -7,14 +7,18 @@ import os
 import csv
 import math
 import cv2 as cv
+import numpy as np
 import pyautogui as pt
 import pyscreenshot as ImageGrab
 
-import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r"""C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"""
+import easyocr
+reader = easyocr.Reader(["es"], gpu=False)
+
+# import pytesseract
+# pytesseract.pytesseract.tesseract_cmd = r"""C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"""
 
 
-SLEEP_TIME = 1.1
+SLEEP_TIME = 0.6
 
 
 def set_position(runas):
@@ -67,7 +71,7 @@ def double_click():
 
 
 def nav_forge_button_position():
-    position = (FORGE_BUTTON_POSITION[0] + randint(-12, 12),
+    position = (FORGE_BUTTON_POSITION[0] + randint(-24, 24),
                 FORGE_BUTTON_POSITION[1] + randint(-6, 6))
     nav_position(position=position)
 
@@ -76,7 +80,6 @@ def f_exit():
     nav_position(EXIT_POSITION)
     single_click()
     print("Quiere salir?")
-    sleep(SLEEP_TIME * 2)
 
 
 def forge_runa():
@@ -138,29 +141,35 @@ def stat_from_window(runa):
         x_init = w
         xloc = x_init + 30
 
+    img = window[yloc:yloc + h, x_init:xloc]
+    img = resize(img, 12)
+    img = cv.threshold(img, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[1]
 
-    minWindow = window[yloc:yloc + h, x_init:xloc]
-    img = resize(minWindow, 9)
+    kernel = np.array([[-1,-1,-1],[-1,9,-1],[-1,-1,-1]])
+    img_filtrada = cv.filter2D(img, -1, kernel)
+
+    alpha = 1.5 # factor de contraste
+    beta = 50 # factor de brillo
+    img = cv.convertScaleAbs(img_filtrada, alpha=alpha, beta=beta)
+
     # img_debug(img)
-    # number = pytesseract.image_to_string(
-    #     img, lang='eng', config='--oem 3 --psm 6')
-    number = pytesseract.image_to_string(img, lang='eng',
-           config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
+
+    result = reader.readtext(img, allowlist='0123456789')
+    number, proba = result[0][1], result[0][2]
+    proba = round(proba, 3)
+
+    # number = pytesseract.image_to_string(img, lang='eng',
+    #        config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
 
     try:
         number = int(number)
     except:
         number = 0
 
-    if number == 0:
-        print("llamada recursiva " + runa.NAME, number)
-        discard_runa()
-        select_runa(runa.POSITION)
-        nav_forge_button_position()
-        forge_runa()
-        stat_from_window(runa)
+    if "AUMENTO_DANIO" in runa.NAME and number >= 21:
+        number = math.floor(number/10)
 
-    return number, max_val
+    return number, proba
 
 
 def forge_runa_low(runa):
@@ -192,9 +201,23 @@ def check_adjust(runas, maxLossStat):
 
     count = 0
     for runa in runas:
-        stat, _ = stat_from_window(runa)
-        if stat == 0:
+        statFromWindow, _ = stat_from_window(runa)
+        if statFromWindow == 0:
             count = count + 1
+        elif statFromWindow <= runa.STAT_TARGET / 2 and not runa.RESTO:
+            intentos = int(math.ceil((round(runa.STAT_TARGET*0.8)-statFromWindow)/runa.CANT))
+
+            print(" Stat por debajo del 50%", runa.NAME + ":", runa.STAT_TARGET, statFromWindow,
+                    " -->", intentos, "intentos")
+            
+            discard_runa()
+            select_runa(runa.POSITION)
+            nav_forge_button_position()
+            
+            intento = 0
+            while intento < intentos:
+                forge_runa()
+                intento = intento + 1
 
     if count >= maxLossStat:
         adjust_obj(runas)
@@ -215,14 +238,16 @@ def adjust_obj(runas):
 
     for runa in runas:
         statFromWindow, probabilidad = stat_from_window(runa)
-        intentos = int(math.ceil((runa.STAT_TARGET-statFromWindow)/runa.CANT))
+
         if statFromWindow > round(runa.STAT_TARGET*(3/4)):
             intentos = 0
         else:
             intentos = int(
                 math.ceil((round(runa.STAT_TARGET*(3/4))-statFromWindow)/runa.CANT))
+            
         print(" ", runa.NAME+":", runa.STAT_TARGET, statFromWindow,
               probabilidad, " -->", intentos, "intentos")
+        
         if intentos > 0:
             discard_runa()
             select_runa(runa.POSITION)
@@ -245,13 +270,14 @@ def print_stats(runas):
 
 def maguear_blite():
     maxLossStat = 2
-    runas = [RUNA_DANIO(), RUNA_CRITICO(), RUNA_SABIDURIA(), RUNA_ALA_RESISTENCIA_TIERRA(),
-             RUNA_RESIS_TIERRA(), RUNA_INICIATIVA(), RUNA_PP(), RUNA_VITALIDAD(),
-             RUNA_INTELIGENCIA(), RUNA_SUERTE()]
+    runas = [RUNA_DANIO(False), RUNA_CRITICO(False), RUNA_SABIDURIA(False), RUNA_ALA_RESISTENCIA_TIERRA(True),
+             RUNA_RESIS_TIERRA(True), RUNA_INICIATIVA(False), RUNA_PP(False), RUNA_VITALIDAD(False),
+             RUNA_INTELIGENCIA(False), RUNA_SUERTE(False)]
 
     set_position(runas)
     set_stat_target("stats/blite.csv", runas)
     # print_stats(runas)
+
     adjust_obj(runas)
     os.system('cls')
 
@@ -267,13 +293,14 @@ def maguear_blite():
 
 def maguear_anilamar():
     maxLossStat = 1
-    runas = [RUNA_DANIO(), RUNA_SABIDURIA(), RUNA_ALA_RESISTENCIA_FUEGO(), RUNA_ALA_RESISTENCIA_AGUA(),
-             RUNA_PP(), RUNA_VITALIDAD(), RUNA_INICIATIVA(), RUNA_FUERZA(),
-             RUNA_SUERTE(), RUNA_AUMENTO_DANIO()]
+    runas = [RUNA_DANIO(False), RUNA_SABIDURIA(False), RUNA_ALA_RESISTENCIA_FUEGO(False), RUNA_ALA_RESISTENCIA_AGUA(False),
+             RUNA_PP(True), RUNA_VITALIDAD(False), RUNA_INICIATIVA(False), RUNA_FUERZA(False),
+             RUNA_SUERTE(False), RUNA_AUMENTO_DANIO(False)]
 
     set_position(runas)
     set_stat_target("stats/anila.csv", runas)
     # print_stats(runas)
+    
     adjust_obj(runas)
     os.system('cls')
 
@@ -330,10 +357,9 @@ def menu():
         maguear_tot()
     elif opcion == 5:
         print("Has seleccionado cinturon xxx")
-        maguear_xxx()
+        maguear_patico()
 
-    cleaner()
-
+    #cleaner()
 
 
 if __name__ == "__main__":

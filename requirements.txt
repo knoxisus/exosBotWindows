@@ -2,4 +2,4 @@ pyscreenshot
 PIL-Tools
 PyAutoGUI
 opencv-python
-pytesseract
+easyocr
