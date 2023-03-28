@@ -10,15 +10,13 @@ import cv2 as cv
 import numpy as np
 import pyautogui as pt
 import pyscreenshot as ImageGrab
+from playsound import playsound
 
 import easyocr
 reader = easyocr.Reader(["es"], gpu=False)
 
 # import pytesseract
 # pytesseract.pytesseract.tesseract_cmd = r"""C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"""
-
-
-SLEEP_TIME = 0.6
 
 
 def set_position(runas):
@@ -48,26 +46,32 @@ def cleaner():
     os.system('cls')
 
     print(YODA_ART)
+    ring_alert()
+
+
+def ring_alert():
+    playsound("alert.mp3")
+
 
 def capture_screen(window_size=WINDOW_SIZE):
     img = ImageGrab.grab(bbox=window_size)
     img.save("stat_windows_img.png")
-    return cv.imread("stat_windows_img.png", 0)
+    return cv.imread("stat_windows_img.png", cv.IMREAD_GRAYSCALE)
 
 
 def nav_position(position):
     pt.moveTo(position[0], position[1], duration=0.1)
-    sleep(SLEEP_TIME)
+    sleep(0.6)
 
 
 def single_click():
     pt.click()
-    sleep(SLEEP_TIME)
+    sleep(0.45)
 
 
 def double_click():
     pt.doubleClick()
-    sleep(SLEEP_TIME)
+    sleep(0.45)
 
 
 def nav_forge_button_position():
@@ -77,8 +81,8 @@ def nav_forge_button_position():
 
 
 def f_exit():
-    nav_position(EXIT_POSITION)
-    single_click()
+    pt.moveTo(EXIT_POSITION[0], EXIT_POSITION[1], duration=0.1)
+    pt.click()
     print("Quiere salir?")
 
 
@@ -120,7 +124,7 @@ def stat_from_window(runa):
         probabilidad = 0.77
 
     window = capture_screen()
-    needle = cv.imread(runa.STAT_IMG, 0)
+    needle = cv.imread(runa.STAT_IMG, cv.IMREAD_GRAYSCALE)
     result = cv.matchTemplate(window, needle, cv.TM_CCOEFF_NORMED)
     _, max_val, _, max_loc = cv.minMaxLoc(result)
     max_val = round(max_val, 3)
@@ -154,12 +158,7 @@ def stat_from_window(runa):
 
     # img_debug(img)
 
-    result = reader.readtext(img, allowlist='0123456789')
-    number, proba = result[0][1], result[0][2]
-    proba = round(proba, 3)
-
-    # number = pytesseract.image_to_string(img, lang='eng',
-    #        config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
+    number, proba = get_number_easyocr(img)
 
     try:
         number = int(number)
@@ -169,6 +168,12 @@ def stat_from_window(runa):
     if "AUMENTO_DANIO" in runa.NAME and number >= 21:
         number = math.floor(number/10)
 
+    return number, proba
+
+def get_number_easyocr(img):
+    result = reader.readtext(img, allowlist='0123456789')
+    number, proba = result[0][1], result[0][2]
+    proba = round(proba, 3)
     return number, proba
 
 
@@ -181,6 +186,12 @@ def forge_runa_low(runa):
     elif intentos > 6:
         intentos = randint(4, 6)
 
+    if runa.STAT_TARGET >= 40:
+        if intentos == 1 and statFromWindow + int(runa.CANT * 0.5) >= runa.STAT_TARGET:
+            op = randint(0,1)
+            if op == 1:
+                return False
+
     print(" ", runa.NAME + ":", runa.STAT_TARGET, statFromWindow,
           probabilidad, " -->", intentos, "intentos")
 
@@ -189,9 +200,15 @@ def forge_runa_low(runa):
     nav_forge_button_position()
 
     intento = 0
-    while intento < intentos:
+    if intentos == 1:
         forge_runa()
-        intento = intento + 1
+        statFromWindow, probabilidad = stat_from_window(runa)
+        if int(math.ceil((runa.STAT_TARGET-statFromWindow)/runa.CANT)) == 1:
+            forge_runa()
+    else:
+        while intento < intentos:
+            forge_runa()
+            intento = intento + 1
 
     return True
 
@@ -204,10 +221,10 @@ def check_adjust(runas, maxLossStat):
         statFromWindow, _ = stat_from_window(runa)
         if statFromWindow == 0:
             count = count + 1
-        elif statFromWindow <= runa.STAT_TARGET / 2 and not runa.RESTO:
-            intentos = int(math.ceil((round(runa.STAT_TARGET*0.8)-statFromWindow)/runa.CANT))
+        elif statFromWindow <= runa.STAT_TARGET * 0.65 and not runa.RESTO:
+            intentos = int(math.ceil((round(runa.STAT_TARGET * 0.85) - statFromWindow) / runa.CANT))
 
-            print(" Stat por debajo del 50%", runa.NAME + ":", runa.STAT_TARGET, statFromWindow,
+            print(" Stat por debajo del 65%", runa.NAME + ":", runa.STAT_TARGET, statFromWindow,
                     " -->", intentos, "intentos")
             
             discard_runa()
@@ -239,11 +256,11 @@ def adjust_obj(runas):
     for runa in runas:
         statFromWindow, probabilidad = stat_from_window(runa)
 
-        if statFromWindow > round(runa.STAT_TARGET*(3/4)):
+        if statFromWindow > round(runa.STAT_TARGET * 0.65):
             intentos = 0
         else:
             intentos = int(
-                math.ceil((round(runa.STAT_TARGET*(3/4))-statFromWindow)/runa.CANT))
+                math.ceil((round(runa.STAT_TARGET * 0.85) - statFromWindow) / runa.CANT))
             
         print(" ", runa.NAME+":", runa.STAT_TARGET, statFromWindow,
               probabilidad, " -->", intentos, "intentos")
@@ -359,7 +376,7 @@ def menu():
         print("Has seleccionado cinturon xxx")
         maguear_patico()
 
-    #cleaner()
+    cleaner()
 
 
 if __name__ == "__main__":
