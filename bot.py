@@ -45,8 +45,8 @@ def cleaner():
 
     os.system('cls')
 
-    print(YODA_ART)
     ring_alert()
+    print(YODA_ART)
 
 
 def ring_alert():
@@ -61,17 +61,17 @@ def capture_screen(window_size=WINDOW_SIZE):
 
 def nav_position(position):
     pt.moveTo(position[0], position[1], duration=0.1)
-    sleep(0.6)
+    sleep(1)
 
 
 def single_click():
     pt.click()
-    sleep(0.45)
+    sleep(0.5)
 
 
 def double_click():
     pt.doubleClick()
-    sleep(0.45)
+    sleep(0.5)
 
 
 def nav_forge_button_position():
@@ -84,6 +84,7 @@ def f_exit():
     pt.moveTo(EXIT_POSITION[0], EXIT_POSITION[1], duration=0.1)
     pt.click()
     print("Quiere salir?")
+    check_error()
 
 
 def forge_runa():
@@ -170,6 +171,7 @@ def stat_from_window(runa):
 
     return number, proba
 
+
 def get_number_easyocr(img):
     result = reader.readtext(img, allowlist='0123456789')
     number, proba = result[0][1], result[0][2]
@@ -188,8 +190,7 @@ def forge_runa_low(runa):
 
     if runa.STAT_TARGET >= 40:
         if intentos == 1 and statFromWindow + int(runa.CANT * 0.5) >= runa.STAT_TARGET:
-            op = randint(0,1)
-            if op == 1:
+            if randint(0,1) == 1:
                 return False
 
     print(" ", runa.NAME + ":", runa.STAT_TARGET, statFromWindow,
@@ -213,6 +214,17 @@ def forge_runa_low(runa):
     return True
 
 
+def check_error():
+    window = capture_screen()
+    needle = cv.imread("error.png", cv.IMREAD_GRAYSCALE)
+    result = cv.matchTemplate(window, needle, cv.TM_CCOEFF_NORMED)
+    _, max_val, _, _ = cv.minMaxLoc(result)
+    max_val = round(max_val, 3)
+
+    if max_val > 0.8:
+        exit()
+
+
 def check_adjust(runas, maxLossStat):
     f_exit()
 
@@ -232,9 +244,15 @@ def check_adjust(runas, maxLossStat):
             nav_forge_button_position()
             
             intento = 0
-            while intento < intentos:
+            if intentos == 1:
                 forge_runa()
-                intento = intento + 1
+                statFromWindow, probabilidad = stat_from_window(runa)
+                if int(math.ceil((runa.STAT_TARGET-statFromWindow)/runa.CANT)) == 1:
+                    forge_runa()
+            else:
+                while intento < intentos:
+                    forge_runa()
+                    intento = intento + 1
 
     if count >= maxLossStat:
         adjust_obj(runas)
@@ -259,8 +277,7 @@ def adjust_obj(runas):
         if statFromWindow > round(runa.STAT_TARGET * 0.65):
             intentos = 0
         else:
-            intentos = int(
-                math.ceil((round(runa.STAT_TARGET * 0.85) - statFromWindow) / runa.CANT))
+            intentos = int(math.ceil((runa.STAT_TARGET - statFromWindow) / runa.CANT))
             
         print(" ", runa.NAME+":", runa.STAT_TARGET, statFromWindow,
               probabilidad, " -->", intentos, "intentos")
@@ -269,10 +286,13 @@ def adjust_obj(runas):
             discard_runa()
             select_runa(runa.POSITION)
             nav_forge_button_position()
+            
             intento = 0
             while intento < intentos:
                 forge_runa()
                 intento = intento + 1
+    
+    os.system('cls')
 
 
 def print_stats(runas):
